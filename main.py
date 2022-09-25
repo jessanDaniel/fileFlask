@@ -12,6 +12,8 @@ CORS(app)
 #app.config['SECRET_KEY'] = 'supersecret'
 app.config['UPLOAD_FOLDER'] = './static'
 
+name = ''
+
 
 @app.route('/')
 def welcome():
@@ -24,9 +26,11 @@ def fileUpload():
     file = request.files.get('file')
 
     filename = secure_filename(file.filename)
+    global name
+    name = file.name
     file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
     msg = "success"
-    return jsonify({"response": msg})
+    return jsonify({"response": msg, "name": name})
 
 
 if __name__ == '__main__':
