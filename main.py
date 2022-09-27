@@ -1,4 +1,5 @@
 
+from unittest import result
 from flask_cors import CORS
 from flask import Flask
 from flask import request, jsonify
@@ -42,43 +43,24 @@ def fileUpload():
 
 @app.route('/train', methods=['GET'])
 def train_data():
-    df = pd.read_csv("./static/jagane.csv", parse_dates=True)
-    # df.columns=["Month","Sales"]
-    # df.plot()
-    df.dropna()
-    df['Sales First Difference'] = df['Sales'] - df['Sales'].shift(12)
-    model = ARIMA(df['Sales'], order=(1, 1, 1))
-    model_fit = model.fit()
-    df['forecast'] = model_fit.predict(start=50, end=103, dynamic=True)
-    # df[['Sales','forecast']].plot(figsize=(12,8))
+    df = pd.read_csv('./static/jagane.csv')
     model = sm.tsa.statespace.SARIMAX(
         df['Sales'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
     results = model.fit()
     df['forecast'] = results.predict(start=50, end=103, dynamic=True)
+    predicted_sales1 = df['forecast'][50:103].to_numpy()
+    l0 = predicted_sales1.tolist()
+    predicted_sales = json.dumps(l0)
 
-    # df = df.set_index(['Date'])
-    # df[['Sales','forecast']].plot(figsize=(12,8))
-    # chart_array.append(df['forecast'][50:103])
+    actual_sales1 = df['Sales'][50:103].to_numpy()
+    l1 = actual_sales1.tolist()
+    actual_sales = json.dumps(l1)
 
-    json_response1 = df['forecast'][50:103].to_numpy()
-    s = json_response1.tolist()
-    json_response = json.dumps(s)
+    dates1 = df['Date'][50:103].to_numpy()
+    l2 = dates1.tolist()
+    dates = json.dumps(l2)
 
-    # json_response1 = df['forecast'][50:103].to_json()
-
-    dates_df = df['Date'][50:103].to_numpy()
-    l = dates_df.tolist()
-    dates = json.dumps(l)
-
-# if its a encoded JSON ---convert that to string---> var str = JSON.stringify(categories);
-
-# Replace slash everywhere in the string----------->str =str.replace(/\//g,"");
-
-# You can convert back to JSON object again using-->var output =JSON.parse(str);
-
-    # print(dates)
-
-    return {'sales': json_response, 'dates': dates}
+    return {'dates': dates, 'actual_sales': actual_sales, 'predicted_sales': predicted_sales}
 
 
 if __name__ == '__main__':
