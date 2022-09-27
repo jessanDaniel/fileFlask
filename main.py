@@ -45,22 +45,39 @@ def train_data():
     df = pd.read_csv("./static/jagane.csv", parse_dates=True)
     # df.columns=["Month","Sales"]
     # df.plot()
+    df.dropna()
     df['Sales First Difference'] = df['Sales'] - df['Sales'].shift(12)
     model = ARIMA(df['Sales'], order=(1, 1, 1))
     model_fit = model.fit()
-    df['forecast'] = model_fit.predict(start=90, end=103, dynamic=True)
+    df['forecast'] = model_fit.predict(start=50, end=103, dynamic=True)
     # df[['Sales','forecast']].plot(figsize=(12,8))
     model = sm.tsa.statespace.SARIMAX(
         df['Sales'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
     results = model.fit()
-    df['forecast'] = results.predict(start=90, end=103, dynamic=True)
+    df['forecast'] = results.predict(start=50, end=103, dynamic=True)
 
     # df = df.set_index(['Date'])
     # df[['Sales','forecast']].plot(figsize=(12,8))
     # chart_array.append(df['forecast'][50:103])
 
-    json_response = df['forecast'][50:103].to_json()
-    dates = df['Date'][50:103].to_json()
+    json_response1 = df['forecast'][50:103].to_numpy()
+    s = json_response1.tolist()
+    json_response = json.dumps(s)
+
+    # json_response1 = df['forecast'][50:103].to_json()
+
+    dates_df = df['Date'][50:103].to_numpy()
+    l = dates_df.tolist()
+    dates = json.dumps(l)
+
+# if its a encoded JSON ---convert that to string---> var str = JSON.stringify(categories);
+
+# Replace slash everywhere in the string----------->str =str.replace(/\//g,"");
+
+# You can convert back to JSON object again using-->var output =JSON.parse(str);
+
+    # print(dates)
+
     return {'sales': json_response, 'dates': dates}
 
 
