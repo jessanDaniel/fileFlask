@@ -5,8 +5,8 @@ from flask_cors import CORS
 from flask import Flask
 from flask import request
 import pandas as pd
-
-
+import re
+from flask_pymongo import pymongo
 import statsmodels.api as sm
 from pandas.tseries.offsets import DateOffset
 from datetime import date
@@ -27,11 +27,65 @@ CORS(app)
 #app.config['SECRET_KEY'] = 'supersecret'
 app.config['UPLOAD_FOLDER'] = './static'
 ALLOWED_EXTENSIONS = {'csv'}
+# * database purpose***********
+regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+
+
+con_string = "mongodb+srv://jessandaniel:jessandaniel@cluster0.bvq4qwg.mongodb.net/?retryWrites=true&w=majority"
+
+
+client = pymongo.MongoClient(con_string)
+
+db = client.get_database('sales_prediction')
+
+user_collection = pymongo.collection.Collection(
+    db, 'Sales_Prediction_users')  # (<database_name>,"<collection_name>")
+print("MongoDB connected Successfully")
+# ***************
 
 
 @app.route('/')
 def welcome():
     return 'welcome'
+
+
+@app.route('/create-user', methods=['POST'])
+def createUser():
+    msg = ''
+    try:
+        req_body = request.get_json(force=True)
+        var = req_body['email']
+        if (not user_collection.find_one({"email": var})) and re.fullmatch(regex, req_body['email']):
+
+            user_collection.insert_one(req_body)
+            msg = 'SignUp Successful'
+        else:
+            msg = 'User Already Exists'
+
+    except Exception as e:
+        print(e)
+        msg = 'Sign Up Unsuccessful'
+    return {'resp': msg}
+
+# ***************
+# * login route
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    msg = ''
+    try:
+        data = request.get_json(force=True)
+        print(data)
+        var = data['email']
+        var2 = data['password']
+        out = user_collection.find_one({"email": var, "password": var2})
+
+        msg = 'Login Successful'
+    except Exception as e:
+        print(e)
+        msg = 'Unsuccessful'
+    return {'resp': msg}
 
 
 def allowed_file(filename):
@@ -197,6 +251,49 @@ def custom_prediction():
     predicted_value = json.dumps(predicted_non_json_value)
 
     return {'custom_value': predicted_value}
+
+
+@app.route('/additional_days', methods=['POST'])
+def additional_days():
+    data = request.get_json(force=True)
+    days = int(data['days'])
+    global filename
+    path = './static/'+filename
+    df = pd.read_csv(path, parse_dates=True, index_col='Date')
+    df = df.dropna()
+
+    model = sm.tsa.statespace.SARIMAX(
+        df['Sales'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+    results = model.fit()
+
+    # to from difference >0,
+
+    future_sales = []
+
+    extra_days = days
+
+    end = extra_days
+
+    # setting extra dates********
+    future_dates = [df.index[-1]+DateOffset(days=x)
+                    for x in range(0, extra_days+1)]
+    future_date_df = pd.DataFrame(index=future_dates[1:], columns=df.columns)
+    future_df = pd.concat([df, future_date_df])
+    future_df['forecast'] = results.predict(
+        start=105, end=105+end+1, dynamic=False)
+    # *********
+
+    future_sales1 = future_df['forecast'][105:].to_numpy()
+    future_sales2 = future_sales1.tolist()
+    future_sales = json.dumps(future_sales2)
+
+    future_user_date1 = list(future_df.index[-days:])
+    future_user_date2 = [str(date)[:-9] for date in future_user_date1]
+    future_user_date = json.dumps(future_user_date2)
+
+    resp = {'future_user_date': future_user_date, 'future_sales': future_sales}
+
+    return resp
 
 
 @app.route('/accuracy_and_error', methods=['GET'])
