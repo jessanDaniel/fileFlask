@@ -105,7 +105,7 @@ def fileUpload():
 
         file = request.files.get('file')
         # If the user does not select a file, the browser submits an
-        # empty file without a filename.
+        # !empty file without a filename.
         if file.filename == '':
             msg = 'Please select a file'
 
@@ -250,7 +250,7 @@ def custom_prediction():
     predicted_non_json_value = future_df['forecast'][-1]
     predicted_value = json.dumps(predicted_non_json_value)
 
-    return {'custom_value': predicted_value}
+    return {'custom_value': predicted_value[:7]}
 
 
 @app.route('/additional_days', methods=['POST'])
@@ -305,7 +305,7 @@ def stats():
         msg = 'failure'
     elif rmse != '' and accuracy != '' and MAPE != '':
         msg = 'success'
-    return {'status': msg, 'rmse': rmse, 'accuracy': accuracy, 'MAPE': MAPE}
+    return {'status': msg, 'rmse': rmse[:4], 'accuracy': accuracy[1:5], 'MAPE': MAPE[:5]}
 
 
 if __name__ == '__main__':
