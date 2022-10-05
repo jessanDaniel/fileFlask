@@ -1,6 +1,6 @@
 
+import hashlib
 from sklearn.metrics import r2_score, mean_absolute_percentage_error
-
 from flask_cors import CORS
 from flask import Flask
 from flask import request
@@ -12,12 +12,13 @@ from pandas.tseries.offsets import DateOffset
 from datetime import date
 import json
 import numpy as np
-
+####
 from werkzeug.utils import secure_filename
 import os
 # * global variables
 df = pd.DataFrame()
 filename = ''
+filename_without_security = ''
 rmse = ''
 accuracy = ''
 MAPE = ''
@@ -127,6 +128,8 @@ def fileUpload():
 
         if file and allowed_file(file.filename):
             global filename
+            global filename_without_security
+            filename_without_security = file.filename
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             msg = 'file upload success'
@@ -150,8 +153,8 @@ def train_data():
     fromm = data['from']
     to = data['to']
 
-    global filename
-    path = 'static/'+filename
+    global filename_without_security
+    path = 'static/'+filename_without_security
     df = pd.read_csv(path, parse_dates=True, index_col='Date')
     df = df.dropna()
 
@@ -238,8 +241,8 @@ def custom_prediction():
     data = request.get_json(force=True)
     custom_unparsed_date = data['custom_date']
 
-    global filename
-    path = './static/'+filename
+    global filename_without_security
+    path = './static/'+filename_without_security
     df = pd.read_csv(r'./static/'+filename, parse_dates=True, index_col='Date')
     df = df.dropna()
     # * training
@@ -273,8 +276,8 @@ def custom_prediction():
 def additional_days():
     data = request.get_json(force=True)
     days = int(data['days'])
-    global filename
-    path = './static/'+filename
+    global filename_without_security
+    path = './static/'+filename_without_security
     df = pd.read_csv(path, parse_dates=True, index_col='Date')
     df = df.dropna()
 
@@ -326,3 +329,4 @@ def stats():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    app.run('0.0.0.0', port=5001)
