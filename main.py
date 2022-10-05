@@ -50,41 +50,57 @@ def welcome():
 
 
 @app.route('/create-user', methods=['POST'])
-def createUser():
+def register_user():
     msg = ''
     try:
         req_body = request.get_json(force=True)
         var = req_body['email']
-        if (not user_collection.find_one({"email": var})) and re.fullmatch(regex, req_body['email']):
-
-            user_collection.insert_one(req_body)
-            msg = 'SignUp Successful'
+        if re.fullmatch(regex, req_body['email']):
+            if (not user_collection.find_one({"email": var})):
+                # Hashing password using message digest5 algorithm
+                password = req_body['password']
+                hashed_password = hashlib.sha256(
+                    password.encode('utf-8')).hexdigest()
+                # username and passwords are inserted to mongoDB using insert_one function
+                user_collection.insert_one(
+                    {"email": var, "password": hashed_password})
+                msg = 'SignUp Successful'
+            else:
+                msg = 'User Already Exists'
         else:
-            msg = 'User Already Exists'
+            msg = 'Mail is not an email'
 
     except Exception as e:
         print(e)
-        msg = 'Sign Up Unsuccessful'
+        msg = 'User Already Exists'
     return {'resp': msg}
+
 
 # ***************
 # * login route
 
 
 @app.route('/login', methods=['POST'])
-def login():
+def signin():
     msg = ''
     try:
         data = request.get_json(force=True)
         print(data)
         var = data['email']
-        var2 = data['password']
-        out = user_collection.find_one({"email": var, "password": var2})
+
+        # Hashing password using message digest5 algorithm
+        password = data['password']
+        hashed_password = hashlib.sha256(password.encode('utf-8')).hexdigest()
+        # username and password are comapred with mongoDB using find_one function
+        out = user_collection.find_one(
+            {"email": var, "password": hashed_password})
+        u1 = out.get('email')
+        p1 = out.get('password')
 
         msg = 'Login Successful'
     except Exception as e:
         print(e)
-        msg = 'Unsuccessful'
+        msg = 'Please check your credentials'
     return {'resp': msg}
 
 
@@ -135,7 +151,7 @@ def train_data():
     to = data['to']
 
     global filename
-    path = './static/'+filename
+    path = 'static/'+filename
     df = pd.read_csv(path, parse_dates=True, index_col='Date')
     df = df.dropna()
 
@@ -224,7 +240,7 @@ def custom_prediction():
 
     global filename
     path = './static/'+filename
-    df = pd.read_csv('./static/jessy.csv', parse_dates=True, index_col='Date')
+    df = pd.read_csv(r'./static/'+filename, parse_dates=True, index_col='Date')
     df = df.dropna()
     # * training
     model = sm.tsa.statespace.SARIMAX(
